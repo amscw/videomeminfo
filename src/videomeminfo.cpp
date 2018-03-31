@@ -10,11 +10,12 @@
 #include "grfxInfo.h"
 
 int main() {
-	std::cout << "!!!Hello World!!!" << std::endl; // prints !!!Hello World!!!
-	grfxInfo_c grfxInfo;
+	HWND hWnd = GetDesktopWindow();
 	try
 	{
-
+		grfxInfo_c grfxInfo;
+		grfxInfo.CheckWDDMDriver();
+		grfxInfo.CreateD3DDevice(hWnd);
 	}
 	catch (const exc_c &exc)
 	{

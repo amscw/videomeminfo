@@ -8,6 +8,7 @@
 #ifndef GRFXINFO_H_
 #define GRFXINFO_H_
 #include "windows.h"
+#include <D3D9.h>
 #include "exc.h"
 
 //----------------------------------------------------------------------------
@@ -21,6 +22,8 @@ struct grfxExc_c : public exc_c
     {
          ERR_OK
         ,ERR_WDDMCHECKFAIL
+		,ERR_CREATE_IDIRECT3D9EX
+		,ERR_CREATE_IDIRECT3DDEVICE
     } m_errCode;
 
 
@@ -45,13 +48,17 @@ class grfxInfo_c
 	// Define a function pointer to the Direct3DCreate9Ex function.
 	typedef HRESULT (WINAPI *LPDIRECT3DCREATE9EX)( UINT, void **);
 
+	HMODULE hD3D9;
 	LPDIRECT3DCREATE9EX pD3D9Create9Ex = nullptr;
+	IDirect3D9Ex *pD3D = nullptr;
+	IDirect3DDevice9Ex *pDevice = nullptr;
 
 public:
-	grfxInfo_c() throw(grfxExc_c);
+	grfxInfo_c();
+	~grfxInfo_c();
 
-private:
-	void checkWDDMDriver() throw (grfxExc_c);
+	void CheckWDDMDriver();
+	void CreateD3DDevice(HWND hWnd);
 };
 
 
