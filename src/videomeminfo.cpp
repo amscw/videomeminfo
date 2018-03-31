@@ -7,15 +7,17 @@
 //============================================================================
 
 #include <iostream>
+#include <memory>
+#include <vector>
 #include "grfxInfo.h"
 
+
 int main() {
-	HWND hWnd = GetDesktopWindow();
 	try
 	{
 		grfxInfo_c grfxInfo;
-		grfxInfo.CheckWDDMDriver();
-		grfxInfo.CreateD3DDevice(hWnd);
+		grfxInfo.CreateIDXGIFactory();
+		std::cout << "found: " << grfxInfo.RetrieveDXGIDescriptors() << " adapters";
 	}
 	catch (const exc_c &exc)
 	{

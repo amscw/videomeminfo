@@ -5,68 +5,83 @@
  *      Author: Alex
  */
 
-// https://msdn.microsoft.com/ru-ru/library/windows/desktop/bb219676(v=vs.85)
-// https://stackoverflow.com/questions/1669111/how-do-i-get-the-window-handle-of-the-desktop
+// about DXGI
+// https://msdn.microsoft.com/en-us/library/windows/desktop/bb219822(v=vs.85).aspx
 
 #include <iostream>
+#include <memory>
 #include "grfxInfo.h"
+#include "comdef.h"
 
 const std::string grfxExc_c::errmsgs[] = {
 		 "OK"
 		,"driver model is not WDDM"
-		,"cannot create IDirect3D9Ex"
-		,"cannot create D3D device"
+		,"cannot create DXGI factory"
+		,"cannot get DXGI adapter descriptor"
 };
 
 grfxInfo_c::grfxInfo_c()
 {
-	hD3D9 = LoadLibrary("d3d9.dll");
+
 }
 
 grfxInfo_c::~grfxInfo_c()
 {
-	if (pDevice != NULL) {pDevice->Release(); pDevice = NULL; }
-	if (pD3D != NULL) {	pD3D->Release(); pD3D = NULL; }
-	FreeLibrary(hD3D9);
+	if (m_pFactory != NULL) { m_pFactory->Release(); m_pFactory = NULL; }
 }
 
 void grfxInfo_c::CheckWDDMDriver()
 {
+	// Define a function pointer to the Direct3DCreate9Ex function.
+	typedef HRESULT (WINAPI *LPDIRECT3DCREATE9EX)( UINT, void **);
+
+	HMODULE hD3D9 = LoadLibrary("d3d9.dll");
     if (hD3D9 == NULL) {
-        throw grfxExc_c(grfxExc_c::errCode_t::ERR_WDDMCHECKFAIL, __FILE__, __FUNCTION__, "hD3D9 is null");
+        throw grfxExc_c(grfxExc_c::errCode_t::ERR_WDDMCHECKFAIL, __FILE__, __FUNCTION__, "d3d9.dll is missing");
     }
 
     /*  Try to create IDirect3D9Ex interface (also known as a DX9L interface). This interface can only be created if the driver is a WDDM driver.
 	 */
-
-    pD3D9Create9Ex = (LPDIRECT3DCREATE9EX) GetProcAddress( hD3D9, "Direct3DCreate9Ex" );
-
+    LPDIRECT3DCREATE9EX pD3D9Create9Ex = (LPDIRECT3DCREATE9EX) GetProcAddress( hD3D9, "Direct3DCreate9Ex" );
     if (pD3D9Create9Ex == NULL) {
+    	FreeLibrary(hD3D9);
     	throw grfxExc_c(grfxExc_c::errCode_t::ERR_WDDMCHECKFAIL, __FILE__, __FUNCTION__, "pD3D9Create9Ex is null");
     }
+    FreeLibrary(hD3D9);
 }
 
-void grfxInfo_c::CreateD3DDevice(HWND hWnd)
+void grfxInfo_c::CreateIDXGIFactory()
 {
 	HRESULT hr;
 
-	// create D3D object
-	hr = pD3D9Create9Ex(D3D_SDK_VERSION, reinterpret_cast<void**>(&pD3D));
+	hr = CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)&m_pFactory);
 	if (FAILED(hr))
-		throw grfxExc_c(grfxExc_c::errCode_t::ERR_CREATE_IDIRECT3D9EX,
-				__FILE__, __FUNCTION__);
-
-	// Set up the structure used to create the D3DDevice.
-	D3DPRESENT_PARAMETERS d3dpp;
-	ZeroMemory( &d3dpp, sizeof(d3dpp) );
-	d3dpp.Windowed = TRUE;
-	d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-	d3dpp.BackBufferFormat = D3DFMT_UNKNOWN;
-
-	// create Direct3D device
-	hr = pD3D->CreateDeviceEx(D3DADAPTER_DEFAULT,  D3DDEVTYPE_HAL, hWnd,
-			D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, NULL, &pDevice);
-	if (FAILED(hr))
-		throw grfxExc_c(grfxExc_c::errCode_t::ERR_CREATE_IDIRECT3DDEVICE,
-				__FILE__, __FUNCTION__);
+	{
+		_com_error err(hr);
+		throw grfxExc_c(grfxExc_c::errCode_t::ERR_CREATE_DXGIFACTORY, __FILE__, __FUNCTION__);
+	}
 }
+
+std::size_t grfxInfo_c::RetrieveDXGIDescriptors()
+{
+	int i;
+	HRESULT hr;
+	IDXGIAdapter *pAdapter;
+
+	while ((hr = m_pFactory->EnumAdapters(i++, &pAdapter)) != DXGI_ERROR_NOT_FOUND)
+	{
+		std::unique_ptr<DXGI_ADAPTER_DESC> pDesc = std::make_unique<DXGI_ADAPTER_DESC>();
+		hr = pAdapter->GetDesc(pDesc.get());
+		pAdapter->Release();
+		if (FAILED(hr))
+		{
+			_com_error err(hr);
+			throw grfxExc_c(grfxExc_c::errCode_t::ERR_GET_DXGIADAPTERDESC, __FILE__, __FUNCTION__);
+			continue;
+		}
+		m_dxgiDescriptors.emplace_back(std::make_unique<DXGI_ADAPTER_DESC>(*pDesc.release()));
+	}
+
+	return i;
+}
+

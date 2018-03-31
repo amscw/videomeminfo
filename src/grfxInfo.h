@@ -7,8 +7,9 @@
 
 #ifndef GRFXINFO_H_
 #define GRFXINFO_H_
+
 #include "windows.h"
-#include <D3D9.h>
+#include <D3D10.h>
 #include "exc.h"
 
 //----------------------------------------------------------------------------
@@ -22,8 +23,8 @@ struct grfxExc_c : public exc_c
     {
          ERR_OK
         ,ERR_WDDMCHECKFAIL
-		,ERR_CREATE_IDIRECT3D9EX
-		,ERR_CREATE_IDIRECT3DDEVICE
+		,ERR_CREATE_DXGIFACTORY
+		,ERR_GET_DXGIADAPTERDESC
     } m_errCode;
 
 
@@ -45,20 +46,19 @@ struct grfxExc_c : public exc_c
 //----------------------------------------------------------------------------
 class grfxInfo_c
 {
-	// Define a function pointer to the Direct3DCreate9Ex function.
-	typedef HRESULT (WINAPI *LPDIRECT3DCREATE9EX)( UINT, void **);
-
-	HMODULE hD3D9;
-	LPDIRECT3DCREATE9EX pD3D9Create9Ex = nullptr;
-	IDirect3D9Ex *pD3D = nullptr;
-	IDirect3DDevice9Ex *pDevice = nullptr;
+	IDXGIFactory *m_pFactory = nullptr;
+	std::vector<std::unique_ptr<DXGI_ADAPTER_DESC>> m_dxgiDescriptors;
 
 public:
 	grfxInfo_c();
 	~grfxInfo_c();
 
 	void CheckWDDMDriver();
-	void CreateD3DDevice(HWND hWnd);
+	void CreateIDXGIFactory();
+	std::size_t RetrieveDXGIDescriptors();
+
+private:
+
 };
 
 
