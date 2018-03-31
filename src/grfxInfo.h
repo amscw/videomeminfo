@@ -8,8 +8,11 @@
 #ifndef GRFXINFO_H_
 #define GRFXINFO_H_
 
+#include <iostream>
+#include <memory>
+#include <vector>
 #include "windows.h"
-#include <D3D10.h>
+#include "D3D10.h"
 #include "exc.h"
 
 //----------------------------------------------------------------------------
@@ -46,6 +49,8 @@ struct grfxExc_c : public exc_c
 //----------------------------------------------------------------------------
 class grfxInfo_c
 {
+	using it_t = std::vector<std::unique_ptr<DXGI_ADAPTER_DESC>>::iterator;
+
 	IDXGIFactory *m_pFactory = nullptr;
 	std::vector<std::unique_ptr<DXGI_ADAPTER_DESC>> m_dxgiDescriptors;
 
@@ -56,6 +61,7 @@ public:
 	void CheckWDDMDriver();
 	void CreateIDXGIFactory();
 	std::size_t RetrieveDXGIDescriptors();
+	void Show() noexcept;
 
 private:
 

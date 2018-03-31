@@ -8,8 +8,6 @@
 // about DXGI
 // https://msdn.microsoft.com/en-us/library/windows/desktop/bb219822(v=vs.85).aspx
 
-#include <iostream>
-#include <memory>
 #include "grfxInfo.h"
 #include "comdef.h"
 
@@ -68,7 +66,7 @@ std::size_t grfxInfo_c::RetrieveDXGIDescriptors()
 	HRESULT hr;
 	IDXGIAdapter *pAdapter;
 
-	while ((hr = m_pFactory->EnumAdapters(i++, &pAdapter)) != DXGI_ERROR_NOT_FOUND)
+	while ((hr = m_pFactory->EnumAdapters(i, &pAdapter)) != DXGI_ERROR_NOT_FOUND)
 	{
 		std::unique_ptr<DXGI_ADAPTER_DESC> pDesc = std::make_unique<DXGI_ADAPTER_DESC>();
 		hr = pAdapter->GetDesc(pDesc.get());
@@ -80,8 +78,32 @@ std::size_t grfxInfo_c::RetrieveDXGIDescriptors()
 			continue;
 		}
 		m_dxgiDescriptors.emplace_back(std::make_unique<DXGI_ADAPTER_DESC>(*pDesc.release()));
+		i++;
 	}
 
 	return i;
+}
+
+void grfxInfo_c::Show() noexcept
+{
+	it_t it;
+	int i;
+
+
+	for (it = m_dxgiDescriptors.begin(), i = 0; it != m_dxgiDescriptors.end(); it++, i++)
+	{
+		std::cout << "#" << i << std::endl;
+		std::wcout << (*it)->Description << std::endl;
+		std::cout << std::hex;
+		std::cout << "VendorId - 0x" << (*it)->VendorId << std::endl;
+		std::cout << "DeviceId - 0x" << (*it)->DeviceId << std::endl;
+		std::cout << "SubSysId - 0x" << (*it)->SubSysId << std::endl;
+		std::cout << std::dec;
+		std::cout << "Revision - " << (*it)->Revision << std::endl;
+		std::cout << "Dedicated video memory = " << (*it)->DedicatedVideoMemory << " bytes (" << (*it)->DedicatedVideoMemory/1024/1024 << "Mb)" << std::endl;
+		std::cout << "Dedicated system memory = " << (*it)->DedicatedSystemMemory << " bytes (" << (*it)->DedicatedSystemMemory/1024/1024 << "Mb)" << std::endl;
+		std::cout << "Shared system memory = " << (*it)->SharedSystemMemory << " bytes (" << (*it)->SharedSystemMemory/1024/1024 << "Mb)" << std::endl;
+		std::cout << std::endl;
+	}
 }
 
