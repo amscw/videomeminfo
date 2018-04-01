@@ -91,7 +91,7 @@ std::size_t grfxInfo_c::RetrieveDXGIDescriptors()
 		{
 			_com_error err(hr);
 			throw grfxExc_c(grfxExc_c::errCode_t::ERR_GET_DXGIADAPTERDESC, __FILE__, __FUNCTION__);
-			continue;
+			// continue;
 		}
 		m_dxgiDescriptors.emplace_back(std::make_unique<DXGI_ADAPTER_DESC>(*pDesc.release()));
 		i++;
