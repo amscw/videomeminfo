@@ -28,6 +28,8 @@ struct grfxExc_c : public exc_c
         ,ERR_WDDMCHECKFAIL
 		,ERR_CREATE_DXGIFACTORY
 		,ERR_GET_DXGIADAPTERDESC
+		,ERR_NO_ADAPTERS_FOUND
+		,ERR_UNKNOWN_VENDOR
     } m_errCode;
 
 
@@ -49,7 +51,22 @@ struct grfxExc_c : public exc_c
 //----------------------------------------------------------------------------
 class grfxInfo_c
 {
-	using it_t = std::vector<std::unique_ptr<DXGI_ADAPTER_DESC>>::iterator;
+	using desc_t = std::unique_ptr<DXGI_ADAPTER_DESC>;
+	using it_t = std::vector<desc_t>::iterator;
+
+	// Функтор для поиска нужного DXGI_ADAPTER_DESC
+	struct IsMatch : public std::unary_function<desc_t, bool>
+	{
+	    bool operator()(const desc_t &desc) const
+	    {
+	        return desc->VendorId == m_nVendorId;
+	    }
+	    IsMatch(UINT VendorId) : m_nVendorId(VendorId) {}
+
+	private:
+	    UINT m_nVendorId;
+	};
+
 
 	IDXGIFactory *m_pFactory = nullptr;
 	std::vector<std::unique_ptr<DXGI_ADAPTER_DESC>> m_dxgiDescriptors;
@@ -58,13 +75,14 @@ public:
 	grfxInfo_c();
 	~grfxInfo_c();
 
-	void CheckWDDMDriver();
-	void CreateIDXGIFactory();
 	std::size_t RetrieveDXGIDescriptors();
+	SIZE_T DedicatedVideoMemory(UINT VendorId);
+	SIZE_T SharedSystemMemory(UINT VendorId);
 	void Show() noexcept;
 
 private:
-
+	void checkWDDMDriver();
+	void createIDXGIFactory();
 };
 
 

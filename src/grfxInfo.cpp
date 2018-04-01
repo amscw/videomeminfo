@@ -8,6 +8,8 @@
 // about DXGI
 // https://msdn.microsoft.com/en-us/library/windows/desktop/bb219822(v=vs.85).aspx
 
+#include <algorithm>
+#include <sstream>
 #include "grfxInfo.h"
 #include "comdef.h"
 
@@ -16,11 +18,13 @@ const std::string grfxExc_c::errmsgs[] = {
 		,"driver model is not WDDM"
 		,"cannot create DXGI factory"
 		,"cannot get DXGI adapter descriptor"
+		,"no adapters found"
+		,"no such vendor"
 };
 
 grfxInfo_c::grfxInfo_c()
 {
-
+	checkWDDMDriver();
 }
 
 grfxInfo_c::~grfxInfo_c()
@@ -28,7 +32,7 @@ grfxInfo_c::~grfxInfo_c()
 	if (m_pFactory != NULL) { m_pFactory->Release(); m_pFactory = NULL; }
 }
 
-void grfxInfo_c::CheckWDDMDriver()
+void grfxInfo_c::checkWDDMDriver()
 {
 	// Define a function pointer to the Direct3DCreate9Ex function.
 	typedef HRESULT (WINAPI *LPDIRECT3DCREATE9EX)( UINT, void **);
@@ -48,7 +52,7 @@ void grfxInfo_c::CheckWDDMDriver()
     FreeLibrary(hD3D9);
 }
 
-void grfxInfo_c::CreateIDXGIFactory()
+void grfxInfo_c::createIDXGIFactory()
 {
 	HRESULT hr;
 
@@ -66,6 +70,18 @@ std::size_t grfxInfo_c::RetrieveDXGIDescriptors()
 	HRESULT hr;
 	IDXGIAdapter *pAdapter;
 
+	if (m_pFactory == NULL)
+	{
+		try
+		{
+			createIDXGIFactory();
+		}
+		catch (const exc_c &exc)
+		{
+			throw;
+		}
+	}
+
 	while ((hr = m_pFactory->EnumAdapters(i, &pAdapter)) != DXGI_ERROR_NOT_FOUND)
 	{
 		std::unique_ptr<DXGI_ADAPTER_DESC> pDesc = std::make_unique<DXGI_ADAPTER_DESC>();
@@ -82,6 +98,38 @@ std::size_t grfxInfo_c::RetrieveDXGIDescriptors()
 	}
 
 	return i;
+}
+
+SIZE_T grfxInfo_c::DedicatedVideoMemory(UINT VendorId)
+{
+	if (m_dxgiDescriptors.size() == 0)
+		throw grfxExc_c(grfxExc_c::errCode_t::ERR_NO_ADAPTERS_FOUND, __FILE__, __FUNCTION__);
+
+	// try search by VendorId
+	it_t it = std::find_if<it_t, IsMatch>(m_dxgiDescriptors.begin(), m_dxgiDescriptors.end(), IsMatch(VendorId));
+	if (it == m_dxgiDescriptors.end())
+	{
+		std::ostringstream oss;
+		oss << "0x" << std::hex << VendorId;
+		throw grfxExc_c(grfxExc_c::errCode_t::ERR_UNKNOWN_VENDOR, __FILE__, __FUNCTION__, oss.str());
+	}
+	return (*it)->DedicatedVideoMemory;
+}
+
+SIZE_T grfxInfo_c::SharedSystemMemory(UINT VendorId)
+{
+	if (m_dxgiDescriptors.size() == 0)
+		throw grfxExc_c(grfxExc_c::errCode_t::ERR_NO_ADAPTERS_FOUND, __FILE__, __FUNCTION__);
+
+	// try search by VendorId
+	it_t it = std::find_if<it_t, IsMatch>(m_dxgiDescriptors.begin(), m_dxgiDescriptors.end(), IsMatch(VendorId));
+	if (it == m_dxgiDescriptors.end())
+	{
+		std::ostringstream oss;
+		oss << "0x" << std::hex << VendorId;
+		throw grfxExc_c(grfxExc_c::errCode_t::ERR_UNKNOWN_VENDOR, __FILE__, __FUNCTION__, oss.str());
+	}
+	return (*it)->SharedSystemMemory;
 }
 
 void grfxInfo_c::Show() noexcept

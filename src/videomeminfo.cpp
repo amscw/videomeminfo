@@ -20,21 +20,27 @@
 int main() {
 	int key;
 	std::ostringstream oss;
-	grfxInfo_c grfxInfo;
 
 	try
 	{
-		grfxInfo.CreateIDXGIFactory();
+		grfxInfo_c grfxInfo;
 		oss << "found: " << grfxInfo.RetrieveDXGIDescriptors() << " adapters";
+		TRACE(oss);
+		grfxInfo.Show();
+
+		// find certain adapter
+		UINT VendorId = 0x10de;
+		SIZE_T nTotal = grfxInfo.DedicatedVideoMemory(VendorId)/1024/1024 + grfxInfo.SharedSystemMemory(VendorId)/1024/1024;
+		oss << "Total video memory for 0x" << std::hex << 0x10de << " only: " << std::dec << nTotal << "Mb";
 		TRACE(oss);
 	}
 	catch (const exc_c &exc)
 	{
 		exc.ToStderr();
 	}
-	grfxInfo.Show();
 
-	std::cin >> key;
+
+	// std::cin >> key;
 	return 0;
 
 }
